@@ -39,8 +39,8 @@ namespace DungeonScale
         float const DEFAULT_SOLO[CONTENT_COUNT][STAT_COUNT][RANK_COUNT] =
         {
             //  Normal Elite  MiniBoss EndBoss
-            { { 0.30f, 0.30f, 0.35f, 0.40f },       // Dungeon  Health
-              { 0.30f, 0.30f, 0.35f, 0.35f } },     // Dungeon  Damage
+            { { 0.20f, 0.20f, 0.25f, 0.30f },       // Dungeon  Health
+              { 0.15f, 0.15f, 0.20f, 0.20f } },     // Dungeon  Damage
             { { 0.08f, 0.08f, 0.10f, 0.12f },       // Raid     Health
               { 0.15f, 0.15f, 0.15f, 0.15f } },     // Raid     Damage
             { { 0.45f, 0.45f, 0.50f, 0.50f },       // Scenario Health

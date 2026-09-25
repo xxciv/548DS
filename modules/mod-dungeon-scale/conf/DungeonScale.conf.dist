@@ -97,15 +97,15 @@ DungeonScale.IgnoreEntries = ""
 ###############################################################################
 
 # 5-man dungeons
-DungeonScale.Dungeon.Health.Normal   = 0.30
-DungeonScale.Dungeon.Health.Elite    = 0.30
-DungeonScale.Dungeon.Health.MiniBoss = 0.35
-DungeonScale.Dungeon.Health.EndBoss  = 0.40
+DungeonScale.Dungeon.Health.Normal   = 0.20
+DungeonScale.Dungeon.Health.Elite    = 0.20
+DungeonScale.Dungeon.Health.MiniBoss = 0.25
+DungeonScale.Dungeon.Health.EndBoss  = 0.30
 
-DungeonScale.Dungeon.Damage.Normal   = 0.30
-DungeonScale.Dungeon.Damage.Elite    = 0.30
-DungeonScale.Dungeon.Damage.MiniBoss = 0.35
-DungeonScale.Dungeon.Damage.EndBoss  = 0.35
+DungeonScale.Dungeon.Damage.Normal   = 0.15
+DungeonScale.Dungeon.Damage.Elite    = 0.15
+DungeonScale.Dungeon.Damage.MiniBoss = 0.20
+DungeonScale.Dungeon.Damage.EndBoss  = 0.20
 
 # Raids (the curve runs from 1 player to the raid size: 10, 25 or 40)
 DungeonScale.Raid.Health.Normal      = 0.08

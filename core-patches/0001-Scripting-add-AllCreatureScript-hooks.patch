@@ -1,0 +1,153 @@
+diff --git a/src/server/game/Entities/Creature/Creature.cpp b/src/server/game/Entities/Creature/Creature.cpp
+index eb49f95..5229c36 100644
+--- a/src/server/game/Entities/Creature/Creature.cpp
++++ b/src/server/game/Entities/Creature/Creature.cpp
+@@ -188,6 +188,7 @@ void Creature::AddToWorld()
+         AIM_Initialize();
+         if (IsVehicle())
+             GetVehicleKit()->Install();
++        sScriptMgr->OnCreatureAddWorld(this);
+     }
+ }
+ 
+@@ -195,6 +196,7 @@ void Creature::RemoveFromWorld()
+ {
+     if (IsInWorld())
+     {
++        sScriptMgr->OnCreatureRemoveWorld(this);
+         if (m_zoneScript)
+             m_zoneScript->OnCreatureRemove(this);
+         if (m_formation)
+@@ -1099,6 +1101,8 @@ void Creature::SelectLevel(const CreatureTemplate* cinfo)
+     SetFloatValue(UNIT_FIELD_MAX_RANGED_DAMAGE, cinfo->maxrangedmg);
+ 
+     SetModifierValue(UNIT_MOD_ATTACK_POWER, BASE_VALUE, cinfo->attackpower);
++
++    sScriptMgr->OnCreatureSelectLevel(this);
+ }
+ 
+ float Creature::_GetHealthMod(int32 Rank)
+diff --git a/src/server/game/Entities/Unit/Unit.cpp b/src/server/game/Entities/Unit/Unit.cpp
+index f95932e..d77409a 100644
+--- a/src/server/game/Entities/Unit/Unit.cpp
++++ b/src/server/game/Entities/Unit/Unit.cpp
+@@ -6619,6 +6619,9 @@ void Unit::Kill(Unit* victim, bool durabilityLoss)
+         }
+ 
+         player->RewardPlayerAndGroupAtKill(victim, false);
++
++        if (creature)
++            sScriptMgr->OnCreatureKilled(creature, player);
+     }
+ 
+     // Do KILL and KILLED procs. KILL proc is called only for the unit who landed the killing blow (and its owner - for pets and totems) regardless of who tapped the victim
+diff --git a/src/server/game/Scripting/ScriptMgr.cpp b/src/server/game/Scripting/ScriptMgr.cpp
+index 4eabe2c..c9834c4 100644
+--- a/src/server/game/Scripting/ScriptMgr.cpp
++++ b/src/server/game/Scripting/ScriptMgr.cpp
+@@ -209,6 +209,7 @@ void ScriptMgr::Unload()
+     SCR_CLEAR(GuildScript);
+     SCR_CLEAR(GroupScript);
+     SCR_CLEAR(UnitScript);
++    SCR_CLEAR(AllCreatureScript);
+ 
+ #undef SCR_CLEAR
+ 
+@@ -1392,6 +1393,31 @@ void ScriptMgr::ModifySpellDamageTaken(Unit* target, Unit* attacker, int32& dama
+     FOREACH_SCRIPT(UnitScript)->ModifySpellDamageTaken(target, attacker, damage);
+ }
+ 
++// AllCreature
++void ScriptMgr::OnCreatureAddWorld(Creature* creature)
++{
++    ASSERT(creature);
++    FOREACH_SCRIPT(AllCreatureScript)->OnCreatureAddWorld(creature);
++}
++
++void ScriptMgr::OnCreatureRemoveWorld(Creature* creature)
++{
++    ASSERT(creature);
++    FOREACH_SCRIPT(AllCreatureScript)->OnCreatureRemoveWorld(creature);
++}
++
++void ScriptMgr::OnCreatureSelectLevel(Creature* creature)
++{
++    ASSERT(creature);
++    FOREACH_SCRIPT(AllCreatureScript)->OnCreatureSelectLevel(creature);
++}
++
++void ScriptMgr::OnCreatureKilled(Creature* killed, Player* rewardedPlayer)
++{
++    ASSERT(killed);
++    FOREACH_SCRIPT(AllCreatureScript)->OnCreatureKilled(killed, rewardedPlayer);
++}
++
+ SpellScriptLoader::SpellScriptLoader(const char* name)
+     : ScriptObject(name)
+ {
+@@ -1552,6 +1578,12 @@ GroupScript::GroupScript(const char* name)
+     ScriptRegistry<GroupScript>::AddScript(this);
+ }
+ 
++AllCreatureScript::AllCreatureScript(const char* name)
++    : ScriptObject(name)
++{
++    ScriptRegistry<AllCreatureScript>::AddScript(this);
++}
++
+ // Instantiate static members of ScriptRegistry.
+ template<class TScript> std::map<uint32, TScript*> ScriptRegistry<TScript>::ScriptPointerList;
+ template<class TScript> uint32 ScriptRegistry<TScript>::_scriptIdCounter = 0;
+@@ -1582,6 +1614,7 @@ template class ScriptRegistry<PlayerScript>;
+ template class ScriptRegistry<GuildScript>;
+ template class ScriptRegistry<GroupScript>;
+ template class ScriptRegistry<UnitScript>;
++template class ScriptRegistry<AllCreatureScript>;
+ 
+ // Undefine utility macros.
+ #undef GET_SCRIPT_RET
+diff --git a/src/server/game/Scripting/ScriptMgr.h b/src/server/game/Scripting/ScriptMgr.h
+index 5850977..386e7e7 100644
+--- a/src/server/game/Scripting/ScriptMgr.h
++++ b/src/server/game/Scripting/ScriptMgr.h
+@@ -772,6 +772,27 @@ public:
+     virtual void OnDisband(Group* /*group*/) { }
+ };
+ 
++class AllCreatureScript : public ScriptObject
++{
++protected:
++    AllCreatureScript(const char* name);
++
++public:
++    bool IsDatabaseBound() const FINAL { return false; }
++
++    // Called after a creature has been added to the world (after its stats were initialized).
++    virtual void OnCreatureAddWorld(Creature* /*creature*/) { }
++
++    // Called before a creature is removed from the world.
++    virtual void OnCreatureRemoveWorld(Creature* /*creature*/) { }
++
++    // Called after Creature::SelectLevel() has (re)initialized level, health and damage (spawn, respawn, entry change).
++    virtual void OnCreatureSelectLevel(Creature* /*creature*/) { }
++
++    // Called when a creature is killed and a player (and their group) was rewarded for the kill.
++    virtual void OnCreatureKilled(Creature* /*killed*/, Player* /*rewardedPlayer*/) { }
++};
++
+ // Placed here due to ScriptRegistry::AddScript dependency.
+ #define sScriptMgr Skyfire::Singleton<ScriptMgr, Skyfire::NullMutex>::instance()
+ 
+@@ -984,6 +1005,12 @@ public: /* Initialization */
+     void ModifyMeleeDamage(Unit* target, Unit* attacker, uint32& damage);
+     void ModifySpellDamageTaken(Unit* target, Unit* attacker, int32& damage);
+ 
++    /* AllCreatureScript */
++    void OnCreatureAddWorld(Creature* creature);
++    void OnCreatureRemoveWorld(Creature* creature);
++    void OnCreatureSelectLevel(Creature* creature);
++    void OnCreatureKilled(Creature* killed, Player* rewardedPlayer);
++
+     /* Scheduled scripts */
+     uint32 IncreaseScheduledScriptsCount() { return ++_scheduledScripts; }
+     uint32 DecreaseScheduledScriptCount() { return --_scheduledScripts; }

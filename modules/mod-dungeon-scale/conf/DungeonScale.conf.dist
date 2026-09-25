@@ -1,0 +1,209 @@
+###############################################################################
+# DungeonScale.conf  -  mod-dungeon-scale for SkyFire 5.4.8
+#
+# Scales dungeon / raid / scenario creatures to the number of players inside
+# the instance, and awards honor for dungeon kills based on the mob's rank.
+#
+# Copy this file to DungeonScale.conf next to worldserver.conf and edit it
+# there. Changes take effect on server restart (or with ".reload config").
+#
+# HOW SCALING WORKS
+#   Every setting below is the multiplier used when ONE player is inside.
+#   The multiplier then rises in a straight line to 1.0 at a full group,
+#   so a full group always fights Blizzlike mobs.
+#
+#     5-man dungeon, value 0.30:
+#       1 player 0.30 | 2 players 0.475 | 3 players 0.65 | 4 players 0.825 | 5 players 1.00
+#
+#   Health  - scales the creature's max health (current health % is kept when
+#             players join or leave mid-fight).
+#   Damage  - scales all damage the creature deals: melee, spells and DoTs.
+#
+# RANKS
+#   Normal   - non-elite mobs (and rares).
+#   Elite    - elite and rare-elite mobs.
+#   MiniBoss - any boss that is NOT the final boss of the instance.
+#   EndBoss  - the final boss (the encounter marked lastEncounterDungeon in
+#              the `instance_encounters` world DB table).
+#   Adds and triggers summoned by a boss are scaled like that boss
+#   (see DungeonScale.Summons.InheritBossScaling).
+#   Use DungeonScale.RankOverride below to fix anything the DB gets wrong.
+#
+# GM COMMANDS (GM account level, same permission as .instance stats)
+#   .dungeonscale info       - scaling state of the instance you are in
+#   .dungeonscale creature   - rank / multipliers of the selected creature
+#   GMs with GM mode ON are not counted as players.
+###############################################################################
+
+[worldserver]
+
+###############################################################################
+# GENERAL
+###############################################################################
+
+#    DungeonScale.Enable
+#        Description: Master switch for the whole module (scaling AND honor).
+#        Default:     1 - Enabled
+#                     0 - Disabled
+
+DungeonScale.Enable = 1
+
+#    DungeonScale.Dungeon.Enable
+#    DungeonScale.Raid.Enable
+#    DungeonScale.Scenario.Enable
+#        Description: Which kinds of instances are scaled.
+#                     A per-map DungeonScale.Map.<id>.Enable setting always wins.
+#        Default:     1 - Dungeons (5-man)
+#                     1 - Raids (10 / 25 / 40, all difficulties incl. LFR and Flex)
+#                     0 - Scenarios (3-man)
+
+DungeonScale.Dungeon.Enable = 1
+DungeonScale.Raid.Enable = 1
+DungeonScale.Scenario.Enable = 0
+
+#    DungeonScale.ChallengeMode.Enable
+#        Description: Scale Challenge Mode dungeons too.
+#        Default:     0 - Challenge Modes are never scaled
+
+DungeonScale.ChallengeMode.Enable = 0
+
+#    DungeonScale.MinPlayers
+#        Description: Scaling never assumes fewer players than this.
+#                     Example: 2 makes a solo player face the "2 players" values.
+#        Default:     1
+
+DungeonScale.MinPlayers = 1
+
+#    DungeonScale.Summons.InheritBossScaling
+#        Description: Creatures summoned by a MiniBoss / EndBoss (adds, void
+#                     zones, triggers) use the boss's multipliers.
+#        Default:     1 - Enabled
+
+DungeonScale.Summons.InheritBossScaling = 1
+
+#    DungeonScale.IgnoreEntries
+#        Description: Comma separated creature entries that are never scaled
+#                     (e.g. encounter NPCs whose health is set by their script).
+#        Example:     "12345, 67890"
+#        Default:     ""
+
+DungeonScale.IgnoreEntries = ""
+
+###############################################################################
+# GLOBAL SCALING  -  multiplier with ONE player inside
+#
+#   DungeonScale.<Dungeon|Raid|Scenario>.<Health|Damage>.<Normal|Elite|MiniBoss|EndBoss>
+#   Valid range: 0.01 - 10.0   (values above 1.0 make small groups face HARDER mobs)
+###############################################################################
+
+# 5-man dungeons
+DungeonScale.Dungeon.Health.Normal   = 0.30
+DungeonScale.Dungeon.Health.Elite    = 0.30
+DungeonScale.Dungeon.Health.MiniBoss = 0.35
+DungeonScale.Dungeon.Health.EndBoss  = 0.40
+
+DungeonScale.Dungeon.Damage.Normal   = 0.30
+DungeonScale.Dungeon.Damage.Elite    = 0.30
+DungeonScale.Dungeon.Damage.MiniBoss = 0.35
+DungeonScale.Dungeon.Damage.EndBoss  = 0.35
+
+# Raids (the curve runs from 1 player to the raid size: 10, 25 or 40)
+DungeonScale.Raid.Health.Normal      = 0.08
+DungeonScale.Raid.Health.Elite       = 0.08
+DungeonScale.Raid.Health.MiniBoss    = 0.10
+DungeonScale.Raid.Health.EndBoss     = 0.12
+
+DungeonScale.Raid.Damage.Normal      = 0.15
+DungeonScale.Raid.Damage.Elite       = 0.15
+DungeonScale.Raid.Damage.MiniBoss    = 0.15
+DungeonScale.Raid.Damage.EndBoss     = 0.15
+
+# Scenarios (3-man; only used when DungeonScale.Scenario.Enable = 1)
+DungeonScale.Scenario.Health.Normal   = 0.45
+DungeonScale.Scenario.Health.Elite    = 0.45
+DungeonScale.Scenario.Health.MiniBoss = 0.50
+DungeonScale.Scenario.Health.EndBoss  = 0.50
+
+DungeonScale.Scenario.Damage.Normal   = 0.50
+DungeonScale.Scenario.Damage.Elite    = 0.50
+DungeonScale.Scenario.Damage.MiniBoss = 0.50
+DungeonScale.Scenario.Damage.EndBoss  = 0.50
+
+###############################################################################
+# PER-DUNGEON OVERRIDES
+#
+#   Any key you set here replaces the global value for that map only; anything
+#   you leave out keeps using the global value. Find a map id with
+#   ".dungeonscale info" (or ".gps") while inside the instance.
+#
+#   DungeonScale.Map.<mapId>.Enable = 0|1          turn scaling + honor off/on for this map
+#   DungeonScale.Map.<mapId>.Health = <value>      every rank's solo health
+#   DungeonScale.Map.<mapId>.Damage = <value>      every rank's solo damage
+#   DungeonScale.Map.<mapId>.Health.<Rank> = <v>   one rank (wins over the line above)
+#   DungeonScale.Map.<mapId>.Damage.<Rank> = <v>
+#
+#   Examples (Mists of Pandaria map ids):
+#     959  Shado-Pan Monastery          1001 Scarlet Halls
+#     960  Temple of the Jade Serpent   1004 Scarlet Monastery
+#     961  Stormstout Brewery           1007 Scholomance
+#     962  Gate of the Setting Sun      1011 Siege of Niuzao Temple
+#     994  Mogu'shan Palace
+#     1008 Mogu'shan Vaults    1009 Heart of Fear    996 Terrace of Endless Spring
+#     1098 Throne of Thunder   1136 Siege of Orgrimmar
+###############################################################################
+
+# Stormstout Brewery is still too rough solo: everything a bit weaker,
+# and the last boss weaker still.
+# DungeonScale.Map.961.Health = 0.25
+# DungeonScale.Map.961.Damage = 0.25
+# DungeonScale.Map.961.Health.EndBoss = 0.20
+
+# Never scale Siege of Orgrimmar.
+# DungeonScale.Map.1136.Enable = 0
+
+###############################################################################
+# RANK OVERRIDES
+#
+#    DungeonScale.RankOverride
+#        Description: Force the rank of specific creature entries, for scaling
+#                     AND honor. Format: "entry:Rank, entry:Rank"
+#                     Rank = Normal | Elite | MiniBoss | EndBoss
+#        Example:     "56448:EndBoss, 59051:MiniBoss"
+#        Default:     ""
+
+DungeonScale.RankOverride = ""
+
+###############################################################################
+# HONOR
+#
+#   Every group member inside the instance and in reward range gets the full
+#   amount (it is NOT split). Weekly / total honor caps still apply.
+###############################################################################
+
+#    DungeonScale.Honor.Enable
+#        Description: Award honor for killing creatures in scaled instances.
+#        Default:     1 - Enabled
+
+DungeonScale.Honor.Enable = 1
+
+#    DungeonScale.Honor.<Rank>
+#        Description: Honor points per kill for each rank. 0 disables that rank.
+
+DungeonScale.Honor.Normal   = 1
+DungeonScale.Honor.Elite    = 5
+DungeonScale.Honor.MiniBoss = 10
+DungeonScale.Honor.EndBoss  = 25
+
+#    DungeonScale.Honor.IgnoreSummons
+#        Description: No honor for summoned creatures (boss adds, spawned waves),
+#                     so endless-add fights can't be farmed.
+#        Default:     1 - Summons give no honor
+
+DungeonScale.Honor.IgnoreSummons = 1
+
+#    DungeonScale.Honor.IgnoreGrayMobs
+#        Description: No honor for mobs that are gray (no XP) to the player,
+#                     e.g. a level 90 farming a level 15 dungeon.
+#        Default:     0 - Gray mobs still give honor
+
+DungeonScale.Honor.IgnoreGrayMobs = 0

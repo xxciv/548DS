@@ -57,37 +57,25 @@ class DungeonScale_UnitScript : public UnitScript
 public:
     DungeonScale_UnitScript() : UnitScript("DungeonScale_UnitScript") { }
 
-    void ModifyMeleeDamage(Unit* /*target*/, Unit* attacker, uint32& damage) OVERRIDE
+    void ModifyMeleeDamage(Unit* target, Unit* attacker, uint32& damage) OVERRIDE
     {
-        damage = sDungeonScale->ScaleDamage(attacker, damage);
+        damage = sDungeonScale->ScaleDamage(target, attacker, damage);
     }
 
-    void ModifySpellDamageTaken(Unit* /*target*/, Unit* attacker, int32& damage) OVERRIDE
+    void ModifySpellDamageTaken(Unit* target, Unit* attacker, int32& damage) OVERRIDE
     {
         if (damage > 0)
-            damage = int32(sDungeonScale->ScaleDamage(attacker, uint32(damage)));
+            damage = int32(sDungeonScale->ScaleDamage(target, attacker, uint32(damage)));
     }
 
-    void ModifyPeriodicDamageAurasTick(Unit* /*target*/, Unit* attacker, uint32& damage) OVERRIDE
+    void ModifyPeriodicDamageAurasTick(Unit* target, Unit* attacker, uint32& damage) OVERRIDE
     {
-        damage = sDungeonScale->ScaleDamage(attacker, damage);
+        damage = sDungeonScale->ScaleDamage(target, attacker, damage);
     }
 
     void OnHeal(Unit* healer, Unit* receiver, uint32& gain) OVERRIDE
     {
         gain = sDungeonScale->ScaleHeal(healer, receiver, gain);
-    }
-};
-
-class DungeonScale_PlayerScript : public PlayerScript
-{
-public:
-    DungeonScale_PlayerScript() : PlayerScript("DungeonScale_PlayerScript") { }
-
-    // Detects players entering / leaving the instance and rescales it (runs on the map's own thread).
-    void OnUpdate(Player* player, uint32 /*diff*/) OVERRIDE
-    {
-        sDungeonScale->OnPlayerUpdate(player);
     }
 };
 
@@ -116,6 +104,7 @@ public:
         Player* player = handler->GetSession()->GetPlayer();
         Map* map = player->GetMap();
         ScaleConfig const& cfg = sDungeonScale->GetConfig();
+        sDungeonScale->RefreshInstance(map);
 
         handler->PSendSysMessage("[DungeonScale] Module: %s | Honor: %s", cfg.enable ? "ENABLED" : "disabled", cfg.honorEnable ? "on" : "off");
         handler->PSendSysMessage("Map %u (%s), difficulty %u, instance %u", map->GetId(), map->GetMapName(), uint32(map->GetDifficulty()), map->GetInstanceId());
@@ -150,6 +139,7 @@ public:
             return false;
         }
 
+        sDungeonScale->RefreshInstance(creature->GetMap());
         handler->PSendSysMessage("[DungeonScale] %s (entry %u, template rank %u)", creature->GetName().c_str(), creature->GetEntry(), creature->GetCreatureTemplate()->rank);
         if (!sDungeonScale->IsScalable(creature))
         {
@@ -170,6 +160,5 @@ void AddSC_mod_dungeon_scale()
     new DungeonScale_WorldScript();
     new DungeonScale_AllCreatureScript();
     new DungeonScale_UnitScript();
-    new DungeonScale_PlayerScript();
     new DungeonScale_CommandScript();
 }

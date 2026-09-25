@@ -10,7 +10,7 @@ This module for [Project SkyFire](https://github.com/ProjectSkyfire/SkyFire_548)
 | **Linear, predictable curve** | You set the multiplier for **1 player**. It rises in a straight line to **1.0 at a full group**, so a full group always gets Blizzlike difficulty. |
 | **Per-rank tuning** | Separate values for `Normal`, `Elite`, `MiniBoss` and `EndBoss`, for dungeons, raids and scenarios. |
 | **Per-dungeon overrides** | `DungeonScale.Map.<mapId>.*` replaces any global value for one map, or turns the map off entirely. |
-| **Live rescaling** | When players join or leave, every creature is rescaled and keeps its current health %. |
+| **Live rescaling** | When players join or leave, every creature is rescaled before the next hit or heal in the instance, and keeps its current health %. |
 | **Honor per kill** | Normal = 1, Elite = 5, MiniBoss = 10, EndBoss = 25 (configurable). Each group member in range gets the full amount. |
 | **GM tools** | `.dungeonscale info` and `.dungeonscale creature` show exactly what's being applied. |
 | **Config file** | `DungeonScale.conf`, loaded at startup and on `.reload config`. |
@@ -64,7 +64,7 @@ If `DungeonScale.conf` is missing, the module falls back to `DungeonScale.conf.d
    DungeonScale.Map.961.Health = 0.25          # all ranks
    DungeonScale.Map.961.Damage.EndBoss = 0.20  # just the last boss
    ```
-4. Restart the server (or run `.reload config`). Creatures are rescaled the next time a player in the instance updates.
+4. Restart the server (or run `.reload config`). Creatures are rescaled on the next hit or heal in the instance, or when you run `.dungeonscale info`.
 
 A GM with GM mode **on** isn't counted as a player, so the instance scales as if one player were inside.
 

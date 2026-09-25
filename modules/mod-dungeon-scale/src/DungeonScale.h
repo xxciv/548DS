@@ -116,10 +116,14 @@ namespace DungeonScale
         void OnCreatureAddWorld(Creature* creature);
         void OnCreatureRemoveWorld(Creature* creature);
         void OnCreatureSelectLevel(Creature* creature);
-        void OnPlayerUpdate(Player* player);
         void OnCreatureKilled(Creature* killed, Player* rewardedPlayer);
-        uint32 ScaleDamage(Unit* attacker, uint32 damage) const;
-        uint32 ScaleHeal(Unit* healer, Unit* receiver, uint32 heal) const;
+        uint32 ScaleDamage(Unit* target, Unit* attacker, uint32 damage);
+        uint32 ScaleHeal(Unit* healer, Unit* receiver, uint32 heal);
+
+        // Rescales the instance if its player count (or the config) changed since the last check.
+        // Must run on the thread updating that map; called from the damage / heal hooks and GM commands.
+        void RefreshInstance(Map* map);
+        void RefreshInstance(Unit* first, Unit* second);
 
         // Applies (or re-applies) health scaling to one creature, keeping its health percentage.
         void ApplyHealth(Creature* creature) const;

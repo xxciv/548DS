@@ -516,9 +516,8 @@ namespace DungeonScale
         }
     }
 
-    void Manager::OnPlayerUpdate(Player* player)
+    void Manager::RefreshInstance(Map* map)
     {
-        Map* map = player->GetMap();
         if (!map || !map->IsInstance())
             return;
 
@@ -531,8 +530,18 @@ namespace DungeonScale
             RescaleInstance(map, *state, players);
     }
 
-    uint32 Manager::ScaleDamage(Unit* attacker, uint32 damage) const
+    void Manager::RefreshInstance(Unit* first, Unit* second)
     {
+        if (Unit* unit = first ? first : second)
+            if (unit->IsInWorld())
+                RefreshInstance(unit->GetMap());
+    }
+
+    uint32 Manager::ScaleDamage(Unit* target, Unit* attacker, uint32 damage)
+    {
+        // Players joining / leaving are picked up here, before any damage lands.
+        RefreshInstance(target, attacker);
+
         if (!damage || !attacker || attacker->GetTypeId() != TypeID::TYPEID_UNIT)
             return damage;
 
@@ -543,8 +552,10 @@ namespace DungeonScale
         return uint32(float(damage) * GetMultiplier(creature, Stat::Damage));
     }
 
-    uint32 Manager::ScaleHeal(Unit* healer, Unit* receiver, uint32 heal) const
+    uint32 Manager::ScaleHeal(Unit* healer, Unit* receiver, uint32 heal)
     {
+        RefreshInstance(receiver, healer);
+
         // Only NPC-on-NPC healing is scaled, so a mob healing a scaled ally does not out-heal the scaling.
         if (!heal || !healer || !receiver || receiver->GetTypeId() != TypeID::TYPEID_UNIT)
             return heal;
